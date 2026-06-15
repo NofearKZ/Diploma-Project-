@@ -17,6 +17,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,7 +52,8 @@ fun ReadingScreen(
     var mistakesCount by remember { mutableStateOf(0) }
     
     // STT State
-    var recognizedText by remember { mutableStateOf("") }
+    var accumulatedText by remember { mutableStateOf("") }
+    var currentSessionText by remember { mutableStateOf("") }
     var sttError by remember { mutableStateOf<String?>(null) }
     var isListening by remember { mutableStateOf(false) }
     var speechRecognizerManager: SpeechRecognizerManager? by remember { mutableStateOf(null) }
@@ -76,7 +78,14 @@ fun ReadingScreen(
         }
         speechRecognizerManager = SpeechRecognizerManager(
             context = context,
-            onResult = { result -> recognizedText = result },
+            onResult = { text, isFinal -> 
+                if (isFinal) {
+                    accumulatedText += " $text"
+                    currentSessionText = ""
+                } else {
+                    currentSessionText = text
+                }
+            },
             onError = { error -> sttError = error },
             onStateChanged = { listening -> isListening = listening }
         )
@@ -87,12 +96,14 @@ fun ReadingScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(textItem.title) },
+                title = { Text(textItem.title, fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = MaterialTheme.colorScheme.primary)
                     }
                 },
                 actions = {
@@ -106,29 +117,63 @@ fun ReadingScreen(
                         }
                         ttsManager?.speak(textToSpeak)
                     }) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = "Озвучить текст")
+                        Icon(Icons.Default.PlayArrow, contentDescription = "Озвучить текст", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
                     }
                 }
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 16.dp)
+        Box(modifier = Modifier.fillMaxSize()) {
+            Text("🎈", fontSize = 50.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(32.dp))
+            
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
             ) {
-                Text(if (language == "ru") "Читать по слогам" else "Буынмен оқу", modifier = Modifier.weight(1f), fontSize = 18.sp)
-                Switch(checked = isSyllableMode, onCheckedChange = { isSyllableMode = !isSyllableMode })
-            }
+                Surface(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+                    color = Color.White,
+                    tonalElevation = 4.dp
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(if (language == "ru") "Читать по слогам" else "Буынмен оқу", modifier = Modifier.weight(1f), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        Switch(
+                            checked = isSyllableMode, 
+                            onCheckedChange = { isSyllableMode = !isSyllableMode },
+                            colors = SwitchDefaults.colors(checkedTrackColor = MaterialTheme.colorScheme.primary)
+                        )
+                    }
+                }
 
             // Text block spacing
             val words = textItem.content.split(Regex("\\s+"))
             val difficultWordIndices = remember { mutableStateListOf<Int>() }
+            val correctWordIndices = remember { mutableStateListOf<Int>() }
+            
+            val fullSpokenText = "$accumulatedText $currentSessionText"
+            LaunchedEffect(fullSpokenText) {
+                correctWordIndices.clear()
+                val spokenWords = fullSpokenText.lowercase().replace(Regex("[^\\p{L}\\s]"), "").split(Regex("\\s+"))
+                val targetWords = words.map { it.lowercase().replace(Regex("[^\\p{L}\\s]"), "") }
+                
+                var tIdx = 0
+                for (sWord in spokenWords) {
+                    if (sWord.isBlank()) continue
+                    for (i in tIdx until minOf(tIdx + 4, targetWords.size)) {
+                        if (targetWords[i] == sWord || (sWord.length >= 4 && targetWords[i].startsWith(sWord.take(4)))) {
+                            correctWordIndices.add(i)
+                            tIdx = i + 1
+                            break
+                        }
+                    }
+                }
+            }
             
             FlowRow(
                 modifier = Modifier
@@ -147,13 +192,20 @@ fun ReadingScreen(
                         }
 
                         val isDifficult = difficultWordIndices.contains(index)
+                        val isCorrect = correctWordIndices.contains(index)
+
+                        val wordColor = when {
+                            isCorrect -> Color(0xFF4CAF50)
+                            isDifficult -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
 
                         Text(
                             text = displayWord,
                             fontSize = 32.sp, // Large font for dyslexia
                             fontWeight = FontWeight.Medium,
                             lineHeight = 44.sp,
-                            color = if (isDifficult) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                            color = wordColor,
                             modifier = Modifier
                                 .clickable {
                                     if (!difficultWordIndices.contains(index)) {
@@ -173,25 +225,12 @@ fun ReadingScreen(
                 }
             }
             
-            if (recognizedText.isNotEmpty() || sttError != null) {
-                 Surface(
-                     modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                     color = MaterialTheme.colorScheme.surfaceVariant,
-                     shape = MaterialTheme.shapes.medium
-                 ) {
-                     Column(modifier = Modifier.padding(16.dp)) {
-                         Text(
-                             text = if (language == "ru") "Вы сказали:" else "Сіз айттыңыз:",
-                             style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant
-                         )
-                         Text(
-                             text = sttError ?: recognizedText,
-                             style = MaterialTheme.typography.bodyLarge,
-                             color = if (sttError != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
-                         )
-                     }
-                 }
+            if (sttError != null) {
+                Text(
+                    text = sttError ?: "",
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -208,9 +247,16 @@ fun ReadingScreen(
                             }
                         }
                     },
-                    modifier = Modifier.padding(end = 16.dp)
+                    modifier = Modifier.padding(end = 16.dp).size(72.dp),
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    containerColor = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Icon(Icons.Default.Mic, contentDescription = "Speech to Text", tint = if (isListening) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer)
+                    Icon(
+                        Icons.Default.Mic, 
+                        contentDescription = "Speech to Text", 
+                        tint = if (isListening) Color.White else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(36.dp)
+                    )
                 }
 
                 Button(
@@ -220,13 +266,16 @@ fun ReadingScreen(
                     },
                     modifier = Modifier
                         .weight(1f)
-                        .height(64.dp)
+                        .height(72.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(36.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(32.dp))
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text(if (language == "ru") "Я прочитал!" else "Мен оқыдым!", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(36.dp), tint = Color.White)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (language == "ru") "Я прочитал!" else "Мен оқыдым!", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 }
             }
+        }
         }
     }
 }

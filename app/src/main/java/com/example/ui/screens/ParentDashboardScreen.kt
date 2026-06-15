@@ -30,12 +30,14 @@ fun ParentDashboardScreen(
     val dateFormat = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(if (language == "ru") "Аналитика (Родители)" else "Аналитика (Ата-аналар)") },
+                title = { Text(if (language == "ru") "📊 Аналитика (Родители)" else "📊 Аналитика (Ата-аналар)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             )

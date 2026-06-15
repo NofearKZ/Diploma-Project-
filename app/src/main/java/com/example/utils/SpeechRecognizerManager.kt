@@ -9,7 +9,7 @@ import android.speech.SpeechRecognizer
 
 class SpeechRecognizerManager(
     private val context: Context,
-    private val onResult: (String) -> Unit,
+    private val onResult: (String, Boolean) -> Unit,
     private val onError: (String) -> Unit,
     private val onStateChanged: (Boolean) -> Unit
 ) {
@@ -69,14 +69,14 @@ class SpeechRecognizerManager(
                 override fun onResults(results: Bundle?) {
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) {
-                        onResult(matches[0])
+                        onResult(matches[0], true)
                     }
                 }
 
                 override fun onPartialResults(results: Bundle?) {
                     val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     if (!matches.isNullOrEmpty()) {
-                        onResult(matches[0])
+                        onResult(matches[0], false)
                     }
                 }
 

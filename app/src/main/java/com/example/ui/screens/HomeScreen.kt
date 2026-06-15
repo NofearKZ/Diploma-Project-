@@ -36,50 +36,63 @@ fun HomeScreen(
     var showPinDialog by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(if (language == "ru") "Легкое Чтение" else "Оңай Оқу") },
+                title = { Text(if (language == "ru") "🐰 Легкое Чтение 🌸" else "🐰 Оңай Оқу 🌸", fontWeight = FontWeight.Bold) },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent),
                 actions = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(end = 16.dp)
                     ) {
-                        Icon(Icons.Default.Star, contentDescription = "Stars", tint = Color(0xFFFFC107))
+                        Icon(Icons.Default.Star, contentDescription = "Stars", tint = Color(0xFFFFC107), modifier = Modifier.size(32.dp))
                         Text(
                             text = "${userStats.stars}",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            modifier = Modifier.padding(start = 4.dp, end = 16.dp)
+                            fontSize = 24.sp,
+                            modifier = Modifier.padding(start = 4.dp, end = 16.dp),
+                            color = MaterialTheme.colorScheme.primary
                         )
                         IconButton(onClick = { viewModel.setLanguage(if (language == "ru") "kk" else "ru") }) {
-                            Icon(Icons.Default.Translate, contentDescription = "Change Language")
+                            Icon(Icons.Default.Translate, contentDescription = "Change Language", tint = MaterialTheme.colorScheme.primary)
                         }
                         IconButton(onClick = { showPinDialog = true }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Parent Dashboard")
+                            Icon(Icons.Default.Settings, contentDescription = "Parent Dashboard", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
-        ) {
-            Text(
-                text = if (language == "ru") "Выбери текст:" else "Мәтінді таңдаңыз:",
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Little background decorators
+            Text("🦋", fontSize = 40.sp, modifier = Modifier.align(Alignment.TopEnd).padding(top = 100.dp, end = 20.dp))
+            Text("⭐", fontSize = 30.sp, modifier = Modifier.align(Alignment.CenterStart).padding(start = 20.dp))
+            Text("🍀", fontSize = 50.sp, modifier = Modifier.align(Alignment.BottomEnd).padding(bottom = 50.dp, end = 30.dp))
+            Text("🐱", fontSize = 40.sp, modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 80.dp, start = 20.dp))
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                items(filteredTexts) { textItem ->
-                    TextCard(
-                        textItem = textItem,
-                        onClick = { onNavigateToReading(textItem.id) }
-                    )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = if (language == "ru") "Выбери текст для чтения:" else "Оқуға арналған мәтінді таңдаңыз:",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(filteredTexts) { textItem ->
+                        TextCard(
+                            textItem = textItem,
+                            onClick = { onNavigateToReading(textItem.id) }
+                        )
+                    }
                 }
             }
         }
@@ -104,24 +117,30 @@ fun TextCard(textItem: TextItem, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable { onClick() }
             .testTag("text_card_${textItem.id}"),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(24.dp)) {
-            Text(
-                text = textItem.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("📚", fontSize = 28.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(
+                    text = textItem.title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = if (textItem.language == "ru") "Сложность: " else "Күрделілігі: ",
-                    style = MaterialTheme.typography.bodyLarge
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Row {
                     repeat(textItem.difficulty) {
-                        Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Star, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color(0xFFFFC107))
                     }
                 }
             }
