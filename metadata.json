@@ -1,0 +1,6 @@
+{
+  "name": "EasyRead",
+  "description": "Мобильное приложение для развития навыков чтения у младших школьников с дислексией",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
